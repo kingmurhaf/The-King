@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>محترف | محادثة P2P (تصميم عصري)</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- مكتبات QR والضغط -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+    <style>
+        /* ---------- التصميم الجديد (App-Level UI) ---------- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, 'Inter', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #050816;
+            overflow: hidden;
+            color: white;
+        }
+
+        .app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* خلفية احترافية متحركة */
+        .animated-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, #2563eb, transparent 40%),
+                        radial-gradient(circle at 70% 70%, #9333ea, transparent 40%);
+            filter: blur(100px);
+            animation: floatBg 14s infinite alternate ease-in-out;
+            z-index: 0;
+        }
+
+        @keyframes floatBg {
+            from { transform: translate(-30px, -20px); }
+            to   { transform: translate(30px, 20px); }
+        }
+
+        /* Dynamic Island */
+        .dynamic-island {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            padding: 8px 18px;
+            border-radius: 999px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 20;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .island-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .island-dot.connected {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        /* فيديو عائم قابل للسحب */
+        .video-floating {
+            position: absolute;
+            width: 160px;
+            aspect-ratio: 9/16;
+            bottom: 90px;
+            right: 15px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: black;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            z-index: 15;
+            transition: transform 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.2);
+            touch-action: none; /* منع التمرير أثناء السحب */
+        }
+
+        .video-floating.hidden {
+            transform: scale(0);
+        }
+
+        .video-floating video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-floating .mini {
+            position: absolute;
+            width: 60px;
+            bottom: 10px;
+            right: 10px;
+            border-radius: 12px;
+            border: 2px solid white;
+        }
+
+        /* منطقة الدردشة */
+        .chat-container {
+            flex: 1;
+            padding: 70px 16px 100px;
+            overflow-y: auto;
+            z-index: 10;
+            position: relative;
+        }
+
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .msg {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            animation: fadeIn 0.2s ease;
+            position: relative;
+            word-break: break-word;
+        }
+
+        .msg.local {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+        }
+
+        .msg.remote {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .msg.system {
+            align-self: center;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            color: #e0e7ff;
+            font-size: 0.8rem;
+            border-radius: 999px;
+            padding: 6px 16px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .timestamp {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-top: 6px;
+            text-align: left;
+        }
+
+        .copy-btn {
+            position: absolute;
+            left: 6px;
+            top: 6px;
+            background: rgba(0,0,0,0.3);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .msg:hover .copy-btn {
+            opacity: 1;
+        }
+
+        /* شريط الإدخال الرئيسي */
+        .input-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.6);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 20;
+        }
+
+        .input-bar input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 999px;
+            padding: 12px 16px;
+            color: white;
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        .input-bar input:focus {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .icon-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1.2rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #2563eb, #9333ea);
+            color: white;
+            font-size: 1.2rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:active {
+            transform: scale(0.85);
+        }
+
+        /* شريط الأدوات الإضافي (لأزرار الاتصال والملفات) */
+        .toolbar {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            right: 0;
+            padding: 0 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            z-index: 18;
+        }
+
+        .toolbar button {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+
+        .toolbar button:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .toolbar button.danger {
+            background: rgba(220,38,38,0.6);
+            border-color: rgba(239,68,68,0.5);
+        }
+
+        /* مودال إعدادات الاتصال (SDP, QR) */
+        .connection-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .connection-modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: rgba(20,25,40,0.9);
+            border-radius: 32px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 12px;
+            color: white;
+            font-family: monospace;
+            resize: vertical;
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .qr-preview {
+            background: white;
+            padding: 10px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .ice-log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-size: 0.7rem;
+            direction: ltr;
+            text-align: left;
+            color: #a0b8d4;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin: 16px 0 8px;
+        }
+
+        .progress-bar-container {
+            background: rgba(255,255,255,0.1);
+            height: 6px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #2563eb;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .file-progress {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            border-radius: 16px;
+            border: 2px solid #3b82f6;
+            cursor: pointer;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="animated-bg"></div>
+
+        <!-- Dynamic Island -->
+        <div class="dynamic-island" id="island">
+            <div class="island-dot" id="connectionDot"></div>
+            <span id="connectionText">غير متصل</span>
+        </div>
+
+        <!-- فيديو عائم (يظهر عند بدء المكالمة) -->
+        <div class="video-floating hidden" id="videoFloating">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <video id="localVideo" autoplay muted playsinline class="mini"></video>
+        </div>
+
+        <!-- منطقة الدردشة -->
+        <div class="chat-container">
+            <div id="messagesContainer" class="messages"></div>
+        </div>
+
+        <!-- شريط الإدخال الرئيسي -->
+        <div class="input-bar">
+            <button class="icon-btn ripple" id="attachFileBtn">
+                <i class="fas fa-paperclip"></i>
+            </button>
+            <input type="text" id="messageInput" placeholder="اكتب رسالة..." />
+            <button class="send-btn ripple" id="sendBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+
+        <!-- شريط الأدوات الإضافي (أزرار الاتصال والتحكم) -->
+        <div class="toolbar" id="toolbar">
+            <button id="openConnectionModalBtn" class="primary"><i class="fas fa-link"></i> الاتصال</button>
+            <button id="closeConnectionBtn" class="danger"><i class="fas fa-times-circle"></i> إنهاء</button>
+            <button id="muteBtn"><i class="fas fa-microphone-slash"></i> كتم</button>
+            <button id="camBtn"><i class="fas fa-video"></i> كاميرا</button>
+            <button id="downloadChatBtn"><i class="fas fa-download"></i> السجل</button>
+        </div>
+    </div>
+
+    <!-- مودال الاتصال (يحتوي على SDP, QR, ICE) -->
+    <div id="connectionModal" class="connection-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plug"></i> إعداد الاتصال</h3>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+                <button id="createOfferBtn" class="primary" style="flex:1"><i class="fas fa-plus-circle"></i> إنشاء Offer</button>
+                <button id="applyOfferBtn" style="flex:1"><i class="fas fa-upload"></i> تطبيق Offer</button>
+                <button id="pasteAnswerBtn" style="flex:1"><i class="fas fa-download"></i> تطبيق Answer</button>
+            </div>
+
+            <textarea id="sdpTextarea" placeholder="الصق Offer أو Answer هنا..."></textarea>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+                <button id="copySdpBtn"><i class="fas fa-copy"></i> نسخ SDP</button>
+                <button id="saveSdpBtn"><i class="fas fa-save"></i> حفظ SDP</button>
+                <button id="generateQrBtn"><i class="fas fa-qrcode"></i> إنشاء QR</button>
+                <button id="scanQrBtn"><i class="fas fa-camera"></i> مسح QR</button>
+            </div>
+
+            <div id="qrContainer" style="display:flex; justify-content:center; margin-bottom:16px;">
+                <div id="qrCanvas" style="background:white; border-radius:12px; padding:8px;"></div>
+            </div>
+
+            <div id="iceLog" class="ice-log">
+                <i class="fas fa-plug"></i> ICE candidates ستظهر هنا...
+            </div>
+
+            <!-- شرائط تقدم الملفات (تظهر عند الحاجة) -->
+            <div id="sendProgress" class="file-progress hidden">
+                <div style="display:flex; justify-content:space-between;">
+                    <span><i class="fas fa-upload"></i> إرسال...</span>
+                    <span id="sendPercent">0%</span>
+                </div>
+                <div class="progress-bar-container"><div id="sendProgressBar" class="progress-bar"></div></div>
+            </div>
+
+            <div id="receiveProgress" class="file-progress hidden">
+                <div style="display:flex; justify-content:space-between;">
+                    <span><i class="fas fa-download"></i> استقبال...</span>
+                    <span id="receivePercent">0%</span>
+                </div>
+                <div class="progress-bar-container"><div id="receiveProgressBar" class="progress-bar"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال مسح QR (يظهر عند النقر على مسح QR) -->
+    <div id="qrModal" class="connection-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-camera"></i> امسح QR</h3>
+                <button class="close-btn" id="closeQrModalBtn">&times;</button>
+            </div>
+            <div id="qr-reader" style="width:100%;"></div>
+        </div>
+    </div>
+
+    <!-- ملفات الإدخال المخفية -->
+    <input type="file" id="fileInput" style="display:none" multiple>
+    <input type="file" id="imageInput" style="display:none" accept="image/*" multiple>
+
+    <script>
+        (function() {
+            // ---------- عناصر DOM ----------
+            // عناصر الواجهة الجديدة
+            const connectionDot = document.getElementById('connectionDot');
+            const connectionText = document.getElementById('connectionText');
+            const videoFloating = document.getElementById('videoFloating');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const attachFileBtn = document.getElementById('attachFileBtn');
+            const openModalBtn = document.getElementById('openConnectionModalBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const closeConnectionBtn = document.getElementById('closeConnectionBtn');
+            const muteBtn = document.getElementById('muteBtn');
+            const camBtn = document.getElementById('camBtn');
+            const downloadChatBtn = document.getElementById('downloadChatBtn');
+            const connectionModal = document.getElementById('connectionModal');
+            const qrModal = document.getElementById('qrModal');
+            const closeQrModalBtn = document.getElementById('closeQrModalBtn');
+            const createOfferBtn = document.getElementById('createOfferBtn');
+            const applyOfferBtn = document.getElementById('applyOfferBtn');
+            const pasteAnswerBtn = document.getElementById('pasteAnswerBtn');
+            const sdpTextarea = document.getElementById('sdpTextarea');
+            const copySdpBtn = document.getElementById('copySdpBtn');
+            const saveSdpBtn = document.getElementById('saveSdpBtn');
+            const generateQrBtn = document.getElementById('generateQrBtn');
+            const scanQrBtn = document.getElementById('scanQrBtn');
+            const qrCanvas = document.getElementById('qrCanvas');
+            const iceLog = document.getElementById('iceLog');
+            const sendProgress = document.getElementById('sendProgress');
+            const sendPercent = document.getElementById('sendPercent');
+            const sendProgressBar = document.getElementById('sendProgressBar');
+            const receiveProgress = document.getElementById('receiveProgress');
+            const receivePercent = document.getElementById('receivePercent');
+            const receiveProgressBar = document.getElementById('receiveProgressBar');
+            const fileInput = document.getElementById('fileInput');
+            const imageInput = document.getElementById('imageInput');
+
+            // ---------- متغيرات WebRTC (نفس السابق) ----------
+            let pc = null;
+            let dc = null;
+            let localStream = null;
+            let localSdp = null;
+            let html5QrScanner = null;
+
+            const CHUNK_SIZE = 16 * 1024; // 16KB
+            const MAX_BUFFERED_AMOUNT = 5 * 1024 * 1024; // 5MB
+            let fileIdCounter = 0;
+            const receivedFiles = {}; // fileId -> { meta, chunks, receivedCount }
+            let pendingFileChunks = [];
+
+            const messageSound = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+
+            // ---------- دوال مساعدة ----------
+            function setConnectionState(state) {
+                if (state === 'connected') {
+                    connectionDot.classList.add('connected');
+                    connectionText.innerText = 'متصل';
+                } else if (state === 'connecting') {
+                    connectionDot.classList.remove('connected');
+                    connectionText.innerText = 'جاري الاتصال...';
+                } else {
+                    connectionDot.classList.remove('connected');
+                    connectionText.innerText = 'غير متصل';
+                }
+            }
+
+            // إظهار/إخفاء الفيديو العائم
+            function showFloatingVideo(show) {
+                if (show) videoFloating.classList.remove('hidden');
+                else videoFloating.classList.add('hidden');
+            }
+
+            // إضافة رسالة نظام
+            function addSystemMessage(text) {
+                const div = document.createElement('div');
+                div.classList.add('msg', 'system');
+                div.textContent = text;
+                messagesContainer.appendChild(div);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                saveMessages();
+            }
+
+            // إضافة رسالة نصية
+            function addMessage(text, sender = 'remote', skipSound = false) {
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('msg', sender);
+                msgDiv.dataset.type = 'text';
+                const span = document.createElement('span');
+                span.textContent = text;
+                msgDiv.appendChild(span);
+
+                const copyBtn = document.createElement('button');
+                copyBtn.classList.add('copy-btn');
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(text).catch(() => {});
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    setTimeout(() => copyBtn.innerHTML = '<i class="fas fa-copy"></i>', 900);
+                };
+                msgDiv.appendChild(copyBtn);
+
+                const time = document.createElement('div');
+                time.classList.add('timestamp');
+                time.textContent = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                msgDiv.appendChild(time);
+
+                messagesContainer.appendChild(msgDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                if (!skipSound && sender === 'remote') messageSound.play().catch(() => {});
+                saveMessages();
+            }
+
+            // إضافة صورة
+            async function addImageMessage(dataUrl, fileName, skipSound = false) {
+                const container = document.createElement('div');
+                container.classList.add('msg', 'remote');
+                container.dataset.type = 'image';
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.alt = fileName;
+                img.classList.add('image-preview');
+                img.onclick = () => window.open(dataUrl);
+                container.appendChild(img);
+                const time = document.createElement('div');
+                time.classList.add('timestamp');
+                time.textContent = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                container.appendChild(time);
+                messagesContainer.appendChild(container);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                if (!skipSound) messageSound.play().catch(() => {});
+                saveMessages();
+            }
+
+            // حفظ واسترجاع السجل (مع حفظ تلقائي كل 5 ثوانٍ)
+            function saveMessages() {
+                const msgs = [];
+                document.querySelectorAll('.msg').forEach(m => {
+                    if (m.classList.contains('system')) return;
+                    const obj = { type: m.dataset.type || 'text', isLocal: m.classList.contains('local') };
+                    if (obj.type === 'text') obj.text = m.querySelector('span')?.textContent || '';
+                    if (obj.type === 'image') obj.dataUrl = m.querySelector('img')?.src || '';
+                    msgs.push(obj);
+                });
+                localStorage.setItem('chatHistory', JSON.stringify(msgs));
+            }
+
+            let autoSaveInterval = setInterval(saveMessages, 5000);
+
+            function loadMessages() {
+                const raw = localStorage.getItem('chatHistory');
+                if (!raw) return;
+                try {
+                    const arr = JSON.parse(raw);
+                    arr.forEach(item => {
+                        if (item.type === 'text') addMessage(item.text, item.isLocal ? 'local' : 'remote', true);
+                        else if (item.type === 'image') addImageMessage(item.dataUrl, 'image', true);
+                    });
+                } catch (e) { console.warn('فشل تحميل السجل', e); }
+            }
+
+            window.addEventListener('beforeunload', saveMessages);
+            window.addEventListener('load', loadMessages);
+
+            // إضافة ICE candidate للسجل
+            function addIceCandidateToLog(candidateStr) {
+                const d = document.createElement('div');
+                d.style.borderBottom = '1px solid #223244';
+                d.style.padding = '4px 2px';
+                d.textContent = candidateStr;
+                iceLog.appendChild(d);
+                iceLog.scrollTop = iceLog.scrollHeight;
+            }
+
+            // الحصول على الكاميرا والميكروفون
+            async function startLocalVideo() {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    localVideo.srcObject = localStream;
+                    showFloatingVideo(true);
+                } catch (err) {
+                    alert('فشل الوصول للكاميرا أو الميكروفون: ' + err);
+                }
+            }
+            startLocalVideo();
+
+            // إنشاء PeerConnection
+            function createPeerConnection() {
+                if (pc) { pc.close(); pc = null; }
+                pc = new RTCPeerConnection({ iceServers: [] });
+
+                if (localStream) {
+                    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                }
+
+                pc.onicecandidate = (e) => {
+                    if (e.candidate) addIceCandidateToLog(e.candidate.candidate);
+                };
+
+                pc.onicegatheringstatechange = () => {
+                    if (pc.iceGatheringState === 'complete' && pc.localDescription) {
+                        sdpTextarea.value = JSON.stringify(pc.localDescription);
+                        localSdp = pc.localDescription;
+                    }
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    const st = pc.iceConnectionState;
+                    if (st === 'connected' || st === 'completed') {
+                        setConnectionState('connected');
+                        addSystemMessage('✅ اتصال ICE مكتمل');
+                    } else if (st === 'checking' || st === 'new') {
+                        setConnectionState('connecting');
+                    } else {
+                        setConnectionState('disconnected');
+                    }
+                };
+
+                pc.ontrack = (ev) => {
+                    if (remoteVideo.srcObject !== ev.streams[0]) remoteVideo.srcObject = ev.streams[0];
+                };
+
+                pc.ondatachannel = (ev) => {
+                    dc = ev.channel;
+                    setupDataChannel();
+                };
+            }
+
+            // إعداد قناة البيانات
+            function setupDataChannel() {
+                if (!dc) return;
+                dc.binaryType = 'arraybuffer';
+                dc.bufferedAmountLowThreshold = MAX_BUFFERED_AMOUNT / 2;
+                dc.onbufferedamountlow = () => {
+                    if (pendingFileChunks.length > 0) {
+                        const next = pendingFileChunks.shift();
+                        dc.send(next);
+                    }
+                };
+
+                dc.onopen = () => {
+                    addSystemMessage('✅ قناة البيانات مفتوحة');
+                    setConnectionState('connected');
+                };
+                dc.onclose = () => {
+                    addSystemMessage('❌ تم إغلاق قناة البيانات');
+                    setConnectionState('disconnected');
+                };
+                dc.onmessage = async (e) => {
+                    if (typeof e.data === 'string') {
+                        try {
+                            const parsed = JSON.parse(e.data);
+                            if (!parsed || typeof parsed !== 'object') return;
+                            if (parsed.type === 'file-meta') {
+                                if (!parsed.fileId || !parsed.fileName || !parsed.fileSize || !parsed.totalChunks) return;
+                                const { fileId, fileName, fileSize, totalChunks } = parsed;
+                                receivedFiles[fileId] = {
+                                    meta: parsed,
+                                    chunks: new Array(totalChunks),
+                                    receivedCount: 0
+                                };
+                                addSystemMessage(`📥 بدء استقبال ملف: ${fileName} (${(fileSize/1024).toFixed(2)} KB)`);
+                                receiveProgress.classList.remove('hidden');
+                                receivePercent.innerText = '0%';
+                                receiveProgressBar.style.width = '0%';
+                            } else if (parsed.type === 'typing') {
+                                showTypingIndicator();
+                            } else {
+                                addMessage(e.data, 'remote');
+                            }
+                        } catch (err) {
+                            addMessage(e.data, 'remote');
+                        }
+                    } else if (e.data instanceof ArrayBuffer) {
+                        const buffer = e.data;
+                        if (buffer.byteLength < 8) return;
+                        const view = new DataView(buffer);
+                        const fileId = view.getUint32(0, true);
+                        const chunkIndex = view.getUint32(4, true);
+                        const chunkData = buffer.slice(8);
+                        if (receivedFiles[fileId]) {
+                            const entry = receivedFiles[fileId];
+                            if (chunkIndex < entry.chunks.length) {
+                                entry.chunks[chunkIndex] = chunkData;
+                                entry.receivedCount++;
+                                const pct = Math.round((entry.receivedCount / entry.chunks.length) * 100);
+                                receivePercent.innerText = pct + '%';
+                                receiveProgressBar.style.width = pct + '%';
+                                if (entry.receivedCount === entry.chunks.length) {
+                                    const blob = new Blob(entry.chunks);
+                                    const { fileName } = entry.meta;
+                                    const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(fileName);
+                                    if (isImage) {
+                                        const dataUrl = await blobToDataURL(blob);
+                                        addImageMessage(dataUrl, fileName);
+                                        addSystemMessage(`🖼️ تم استلام الصورة: ${fileName}`);
+                                    } else {
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = fileName;
+                                        a.click();
+                                        addSystemMessage(`✅ تم استلام الملف: ${fileName} (تم التحميل)`);
+                                    }
+                                    receiveProgress.classList.add('hidden');
+                                    delete receivedFiles[fileId];
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            // إرسال ملف
+            async function sendFile(file) {
+                if (!dc || dc.readyState !== 'open') { alert('القناة غير مفتوحة'); return; }
+                const fileId = fileIdCounter++;
+                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                const meta = { type: 'file-meta', fileId, fileName: file.name, fileSize: file.size, totalChunks };
+                dc.send(JSON.stringify(meta));
+                addSystemMessage(`📤 بدء إرسال: ${file.name}`);
+                sendProgress.classList.remove('hidden');
+                sendPercent.innerText = '0%';
+                sendProgressBar.style.width = '0%';
+
+                const chunks = [];
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+                    const chunkBuf = await chunk.arrayBuffer();
+                    const header = new ArrayBuffer(8);
+                    const view = new DataView(header);
+                    view.setUint32(0, fileId, true);
+                    view.setUint32(4, i, true);
+                    const combined = new Uint8Array(header.byteLength + chunkBuf.byteLength);
+                    combined.set(new Uint8Array(header), 0);
+                    combined.set(new Uint8Array(chunkBuf), header.byteLength);
+                    chunks.push(combined.buffer);
+                }
+
+                pendingFileChunks = chunks.slice();
+                const sendNext = () => {
+                    if (pendingFileChunks.length === 0) {
+                        addSystemMessage(`✅ انتهى الإرسال: ${file.name}`);
+                        setTimeout(() => sendProgress.classList.add('hidden'), 900);
+                        return;
+                    }
+                    while (pendingFileChunks.length > 0 && dc.bufferedAmount < MAX_BUFFERED_AMOUNT) {
+                        const chunk = pendingFileChunks.shift();
+                        dc.send(chunk);
+                        const sentCount = totalChunks - pendingFileChunks.length;
+                        const pct = Math.round((sentCount / totalChunks) * 100);
+                        sendPercent.innerText = pct + '%';
+                        sendProgressBar.style.width = pct + '%';
+                    }
+                };
+                const originalHandler = dc.onbufferedamountlow;
+                dc.onbufferedamountlow = () => { sendNext(); if (originalHandler) originalHandler(); };
+                sendNext();
+            }
+
+            function blobToDataURL(blob) {
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            }
+
+            // مؤشر الكتابة
+            let typingTimeout = null;
+            function showTypingIndicator() {
+                let el = document.getElementById('typingIndicator');
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = 'typingIndicator';
+                    el.classList.add('msg', 'system');
+                    el.textContent = '📝 الآخر يكتب...';
+                    messagesContainer.appendChild(el);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    const e = document.getElementById('typingIndicator');
+                    if (e) e.remove();
+                }, 1500);
+            }
+
+            // ---------- أحداث الأزرار ----------
+            // فتح/إغلاق المودال
+            openModalBtn.addEventListener('click', () => {
+                connectionModal.classList.remove('hidden');
+            });
+            closeModalBtn.addEventListener('click', () => {
+                connectionModal.classList.add('hidden');
+            });
+            // إغلاق مودال QR
+            closeQrModalBtn.addEventListener('click', () => {
+                qrModal.classList.add('hidden');
+                if (html5QrScanner) {
+                    html5QrScanner.stop().then(() => html5QrScanner.clear()).catch(() => {});
+                    html5QrScanner = null;
+                }
+            });
+
+            // إنشاء Offer
+            createOfferBtn.addEventListener('click', async () => {
+                iceLog.innerHTML = '<i class="fas fa-plug"></i> ICE candidates ستظهر هنا...';
+                createPeerConnection();
+                dc = pc.createDataChannel('chat');
+                setupDataChannel();
+                try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    sdpTextarea.value = JSON.stringify(pc.localDescription);
+                    localSdp = pc.localDescription;
+                    setConnectionState('connecting');
+                    addSystemMessage('تم إنشاء Offer');
+                } catch (err) { alert('خطأ بإنشاء Offer: ' + err); }
+            });
+
+            // تطبيق Offer (كمستقبل)
+            applyOfferBtn.addEventListener('click', async () => {
+                try {
+                    const txt = sdpTextarea.value.trim();
+                    if (!txt) return alert('ضع SDP Offer في الحقل أولاً');
+                    iceLog.innerHTML = '<i class="fas fa-plug"></i> ICE candidates ستظهر هنا...';
+                    createPeerConnection();
+                    const offerSdp = JSON.parse(txt);
+                    await pc.setRemoteDescription(offerSdp);
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    sdpTextarea.value = JSON.stringify(pc.localDescription);
+                    localSdp = pc.localDescription;
+                    setConnectionState('connecting');
+                    addSystemMessage('تم إنشاء Answer');
+                } catch (err) { alert('خطأ بتطبيق Offer: ' + err); }
+            });
+
+            // تطبيق Answer (منشئ offer)
+            pasteAnswerBtn.addEventListener('click', async () => {
+                if (!pc) return alert('أنشئ PeerConnection أولاً');
+                try {
+                    const answerSdp = JSON.parse(sdpTextarea.value);
+                    await pc.setRemoteDescription(answerSdp);
+                    addSystemMessage('تم تطبيق Answer');
+                } catch (err) { alert('خطأ بتطبيق Answer: ' + err); }
+            });
+
+            copySdpBtn.addEventListener('click', () => {
+                if (!sdpTextarea.value) return alert('لا يوجد SDP');
+                sdpTextarea.select();
+                navigator.clipboard.writeText(sdpTextarea.value).catch(() => {});
+                alert('تم نسخ SDP');
+            });
+
+            saveSdpBtn.addEventListener('click', () => {
+                if (!sdpTextarea.value) return alert('لا يوجد SDP');
+                const blob = new Blob([sdpTextarea.value], { type: 'application/sdp' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'sdp.json'; a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // QR
+            generateQrBtn.addEventListener('click', () => {
+                const sdp = sdpTextarea.value.trim();
+                if (!sdp) return alert('لا يوجد SDP');
+                try {
+                    const compressed = LZString.compressToBase64(sdp);
+                    qrCanvas.innerHTML = '';
+                    new QRCode(qrCanvas, { text: compressed, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.Q });
+                } catch (e) { alert('فشل إنشاء QR: ' + e); }
+            });
+
+            // مسح QR
+            scanQrBtn.addEventListener('click', async () => {
+                qrModal.classList.remove('hidden');
+                if (html5QrScanner) return;
+                html5QrScanner = new Html5Qrcode('qr-reader');
+                try {
+                    const devices = await Html5Qrcode.getCameras();
+                    const camId = devices && devices.length ? devices[0].id : null;
+                    if (!camId) { alert('لا توجد كاميرا'); qrModal.classList.add('hidden'); return; }
+                    await html5QrScanner.start(
+                        { deviceId: { exact: camId } },
+                        { fps: 10, qrbox: 250 },
+                        (decodedText) => {
+                            try {
+                                const decompressed = LZString.decompressFromBase64(decodedText);
+                                if (decompressed) {
+                                    sdpTextarea.value = decompressed;
+                                    addSystemMessage('تم استيراد SDP من QR');
+                                } else {
+                                    try { JSON.parse(decodedText); sdpTextarea.value = decodedText; addSystemMessage('تم استيراد SDP من QR (غير مضغوط)'); }
+                                    catch (e) { addSystemMessage('محتوى QR غير مفهوم'); }
+                                }
+                                html5QrScanner.stop().then(() => html5QrScanner.clear()).catch(() => {});
+                                html5QrScanner = null;
+                                qrModal.classList.add('hidden');
+                            } catch (e) { addSystemMessage('خطأ بفك ضغط QR: ' + e); }
+                        },
+                        (error) => { }
+                    );
+                } catch (err) { alert('خطأ ببدء الماسح: ' + err); qrModal.classList.add('hidden'); }
+            });
+
+            // إرسال رسالة
+            sendBtn.addEventListener('click', () => {
+                const txt = messageInput.value.trim();
+                if (!txt) return;
+                if (!dc || dc.readyState !== 'open') { alert('القناة غير مفتوحة'); return; }
+                dc.send(txt);
+                addMessage(txt, 'local');
+                messageInput.value = '';
+            });
+
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendBtn.click();
+            });
+            messageInput.addEventListener('input', () => {
+                if (dc && dc.readyState === 'open') dc.send(JSON.stringify({ type: 'typing' }));
+            });
+
+            // إرفاق ملفات
+            attachFileBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => {
+                const files = e.target.files;
+                if (!files.length) return;
+                for (const f of files) sendFile(f);
+                fileInput.value = '';
+            });
+
+            // إرفاق صور (نفس الملفات)
+            document.querySelector('#attachImageBtn')?.addEventListener('click', () => imageInput.click()); // غير موجود في الواجهة لكن يمكن إضافته لاحقاً
+            imageInput.addEventListener('change', (e) => {
+                const files = e.target.files;
+                if (!files.length) return;
+                for (const f of files) sendFile(f);
+                imageInput.value = '';
+            });
+
+            // تحميل السجل
+            downloadChatBtn.addEventListener('click', () => {
+                const json = localStorage.getItem('chatHistory') || '[]';
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'chat_history.json'; a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // إنهاء الاتصال
+            closeConnectionBtn.addEventListener('click', () => {
+                if (dc) { dc.close(); dc = null; }
+                if (pc) { pc.close(); pc = null; }
+                setConnectionState('disconnected');
+                remoteVideo.srcObject = null;
+                addSystemMessage('🔴 تم إنهاء الاتصال');
+            });
+
+            // كتم / تشغيل الميكروفون
+            muteBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const audioTracks = localStream.getAudioTracks();
+                if (audioTracks.length) {
+                    const enabled = audioTracks[0].enabled;
+                    audioTracks.forEach(t => t.enabled = !enabled);
+                    muteBtn.innerHTML = enabled ? '<i class="fas fa-microphone-slash"></i> كتم' : '<i class="fas fa-microphone"></i> تشغيل';
+                }
+            });
+
+            // كتم / تشغيل الكاميرا
+            camBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const videoTracks = localStream.getVideoTracks();
+                if (videoTracks.length) {
+                    const enabled = videoTracks[0].enabled;
+                    videoTracks.forEach(t => t.enabled = !enabled);
+                    camBtn.innerHTML = enabled ? '<i class="fas fa-video-slash"></i> إيقاف' : '<i class="fas fa-video"></i> تشغيل';
+                }
+            });
+
+            // معرف عشوائي (اختياري)
+            // يمكن إضافته في مكان ما
+
+            // Ripple effect (بسيط)
+            document.querySelectorAll('.ripple').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const circle = document.createElement('span');
+                    const diameter = Math.max(this.clientWidth, this.clientHeight);
+                    circle.style.width = circle.style.height = diameter + 'px';
+                    circle.style.left = e.offsetX - diameter/2 + 'px';
+                    circle.style.top = e.offsetY - diameter/2 + 'px';
+                    circle.style.position = 'absolute';
+                    circle.style.borderRadius = '50%';
+                    circle.style.transform = 'scale(0)';
+                    circle.style.animation = 'rippleAnim 0.6s linear';
+                    circle.style.background = 'rgba(255,255,255,0.5)';
+                    this.appendChild(circle);
+                    setTimeout(() => circle.remove(), 600);
+                });
+            });
+
+            // إضافة نمط ripple
+            const style = document.createElement('style');
+            style.textContent = `
+                .ripple { position: relative; overflow: hidden; }
+                @keyframes rippleAnim {
+                    to { transform: scale(4); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // سحب الفيديو العائم
+            let isDragging = false, offsetX = 0, offsetY = 0;
+            videoFloating.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                isDragging = true;
+                const touch = e.touches[0];
+                offsetX = touch.clientX - videoFloating.offsetLeft;
+                offsetY = touch.clientY - videoFloating.offsetTop;
+            });
+            videoFloating.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                videoFloating.style.left = touch.clientX - offsetX + 'px';
+                videoFloating.style.top = touch.clientY - offsetY + 'px';
+                videoFloating.style.right = 'auto';
+                videoFloating.style.bottom = 'auto';
+            });
+            videoFloating.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // بداية
+            addSystemMessage('مرحباً! التصميم الجديد جاهز.');
+        })();
+    </script>
+</body>
+</html>
